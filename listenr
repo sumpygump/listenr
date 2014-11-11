@@ -1,0 +1,172 @@
+#!/bin/bash
+: ${DIALOG=dialog}
+: ${MPLAYER=mplayer}
+
+lversion="listenr-1.2.2"
+
+red() {
+    if [ -t 0 ]; then
+        printf "\E[31m" 
+    fi
+}
+op() {
+    if [ -t 0 ]; then
+        printf "\E[39;49m"
+    fi
+}
+
+DEBUG=false
+MATRIX=true
+HASDIALOG=false
+
+SCRIPT=$(readlink -f $0)
+SCRIPTPATH=`dirname $SCRIPT`
+CONFIGPATH="$SCRIPTPATH/stations.conf"
+
+if [ ! -e $CONFIGPATH ]; then
+    red;echo "Config file '$CONFIGPATH' not found.";op
+    exit 5
+fi
+
+OLDIFS="$IFS"
+IFS="|"
+STATIONOPTS=(`awk 'BEGIN {FS = "|"} {printf "%s|%s|", $1, $2}' $CONFIGPATH`)
+STATIONURLS=(`awk 'BEGIN {FS = "|"} {printf "%s|%s|", $1, $3}' $CONFIGPATH`)
+STATIONCOLORS=(`awk 'BEGIN {FS = "|"} {printf "%s|%s|", $1, $4}' $CONFIGPATH`)
+IFS=$OLDIFS
+
+displayUsage() {
+    echo "$lversion - Listen to streaming radio using mplayer"
+    echo "Usage: listenr [-d] [-n] [--list] [station]"
+    echo '  -d Debug mode (bypass the streamwatch pipe)'
+    echo '  -n No matrix animation (cmatrix)'
+    echo '  --list List available stations from config file'
+    echo
+    echo "Available stations are configured in stations.conf file ($CONFIGPATH)."
+    echo "mplayer output is piped to streamwatch (included with listenr program) "
+    echo "  to display desktop notifications of stream song changes."
+    echo "Without a station argument a dialog will present list for selecting a station."
+    echo
+    echo "Example: listenr -d ${STATIONOPTS[0]}"
+    echo
+}
+
+displayStations() {
+    echo 'List of available stations:'
+    for i in $(seq 0 2 $((${#STATIONOPTS[@]} - 2))); do
+        echo "${STATIONOPTS[i]} - ${STATIONOPTS[i+1]}"
+    done
+    echo
+}
+
+# Handle --help arg
+if [ -n "$1" -a "$1" == "--help" ]; then
+    displayUsage
+    exit 1
+fi
+
+# Handle --help arg
+if [ -n "$1" -a "$1" == "--version" ]; then
+    echo $lversion
+    exit 1
+fi
+
+# Handle --list arg
+if [ -n "$1" -a "$1" == "--list" ]; then
+    displayStations
+    exit 1
+fi
+
+# Process options
+while getopts "dn" opt; do
+    case $opt in
+        d)
+            DEBUG=true
+            ;;
+        n)
+            MATRIX=false
+            ;;
+    esac
+done
+
+# Shift off the used args
+shift $((OPTIND-1))
+
+# Detect if dialog is available
+which $DIALOG > /dev/null
+if [ $? -eq 1 ]; then
+    red; echo "Warning: $DIALOG not installed. Reading station from args"; op
+    HASDIALOG=false
+else
+    HASDIALOG=true
+fi
+
+# Detect if mplayer is available
+which $MPLAYER > /dev/null
+if [ $? -eq 1 ]; then
+    red; echo "Error: $MPLAYER not installed. $MPLAYER is required to listen to streams"; op
+    exit 3
+fi
+
+# Process arg
+if [ -z $1 ]; then
+    if [ $HASDIALOG == true ]; then
+        # If no argument is given, let the user choose a station
+        # requires dialog
+        value=$(dialog --clear --title "listenr" --menu "Select station" 18 50 8 "${STATIONOPTS[@]}" 2>&1 >/dev/tty)
+        retval=$?
+        case $retval in
+            0)
+                clear;
+                station=$value
+            ;;
+            1)
+                #User chose "Cancel"
+                clear
+                exit 0
+            ;;
+            255)
+                clear
+                exit 255
+            ;;
+        esac
+    else
+        red;echo 'No station argument.';op
+        displayUsage
+        displayStations
+        exit 1
+    fi
+else
+    station=$1
+fi
+
+for i in $(seq 0 $((${#STATIONURLS[@]} - 1))); do
+    if [ ${STATIONURLS[i]} == $station ]; then
+        url=${STATIONURLS[++i]}
+        color=${STATIONCOLORS[i]}
+    fi
+done
+
+if [ "$url" = "" ]; then
+    echo "Station unknown: $station"
+    exit 2
+fi
+
+userAgent=`$MPLAYER | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}'`
+mplayerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -prefer-ipv4 $url"
+
+if [ $DEBUG == true ] ; then
+    # Debug mode bypasses the streamwatch pipe
+    $mplayerCmd
+else 
+    if [ $MATRIX == true ] ; then
+        # Show matrix visualization
+        $mplayerCmd 2>&1 | streamwatch | cmatrix -a -b -C $color -s
+    else
+        # Don't show matrix visualization
+        $mplayerCmd 2>&1 | streamwatch
+    fi
+fi
+
+# Ensure we get back into a sane environment
+stty sane
