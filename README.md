@@ -37,6 +37,12 @@ weather|Weather Radio - 55420|http://audioplayer.wunderground.com/tim273/edina|c
 ```
 ## Usage
 
+Run `listenr --help` to find help on using this program.
+
+Run `listenr` without any arguments to choose from your list of configured stations and start playing it.
+
+Use Control-C to exit the program after starting.
+
 ```
 Usage: listenr [-d] [-n] [--list] [station]
   -d Debug mode (bypass the streamwatch pipe)
