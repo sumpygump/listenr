@@ -1,8 +1,21 @@
 #!/bin/bash
+#------------------------------------------#
+#    _     _     _                  
+#   | |   (_)___| |_ ___ _ __  _ __ 
+#   | |   | / __| __/ _ \ '_ \| '__|
+#   | |___| \__ \ ||  __/ | | | |   
+#   |_____|_|___/\__\___|_| |_|_|   
+#
+# Internet Radio from the command line
+# By Jansen Price <jansen.price@gmail.com>
+#------------------------------------------#
+# Run listenr --help for usage
+#------------------------------------------#
+                                
 : ${DIALOG=dialog}
 : ${MPLAYER=mplayer}
 
-lversion="listenr-1.2.2"
+lversion="listenr-1.2.3"
 
 red() {
     if [ -t 0 ]; then
@@ -22,6 +35,7 @@ HASDIALOG=false
 SCRIPT=$(readlink -f $0)
 SCRIPTPATH=`dirname $SCRIPT`
 CONFIGPATH="$SCRIPTPATH/stations.conf"
+STREAMWATCH_BIN="$SCRIPTPATH/streamwatch"
 
 if [ ! -e $CONFIGPATH ]; then
     red;echo "Config file '$CONFIGPATH' not found.";op
@@ -65,7 +79,7 @@ if [ -n "$1" -a "$1" == "--help" ]; then
     exit 1
 fi
 
-# Handle --help arg
+# Handle --version arg
 if [ -n "$1" -a "$1" == "--version" ]; then
     echo $lversion
     exit 1
@@ -140,6 +154,7 @@ else
     station=$1
 fi
 
+# Find the station selected in the station data arrays
 for i in $(seq 0 $((${#STATIONURLS[@]} - 1))); do
     if [ ${STATIONURLS[i]} == $station ]; then
         url=${STATIONURLS[++i]}
@@ -147,26 +162,30 @@ for i in $(seq 0 $((${#STATIONURLS[@]} - 1))); do
     fi
 done
 
+# Did not resolve to station
 if [ "$url" = "" ]; then
     echo "Station unknown: $station"
     exit 2
 fi
 
+# Create command to execute
 userAgent=`$MPLAYER | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}'`
 mplayerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -prefer-ipv4 $url"
 
+# Run appropriate command based on options
 if [ $DEBUG == true ] ; then
     # Debug mode bypasses the streamwatch pipe
     $mplayerCmd
 else 
     if [ $MATRIX == true ] ; then
         # Show matrix visualization
-        $mplayerCmd 2>&1 | streamwatch | cmatrix -a -b -C $color -s
+        $mplayerCmd 2>&1 | $STREAMWATCH_BIN | cmatrix -a -b -C $color -s
     else
         # Don't show matrix visualization
-        $mplayerCmd 2>&1 | streamwatch
+        $mplayerCmd 2>&1 | $STREAMWATCH_BIN
     fi
 fi
 
 # Ensure we get back into a sane environment
 stty sane
+exit 0

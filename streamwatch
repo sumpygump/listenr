@@ -1,5 +1,12 @@
 #!/usr/bin/env php
 <?php
+/**
+ * Streamwatch
+ *
+ * This file is a PHP script that is a companion to listenr.
+ * It reads stdin and then uses Linux' notify command to alert track changes
+ * that are provided along with the Internet Radio stream changes.
+ */
 
 // TODO:
 // [ ] Pass in args for default name (streamwatch --name=streamname)
