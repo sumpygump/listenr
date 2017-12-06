@@ -202,10 +202,10 @@ else
 
     if [ $MATRIX == true ] ; then
         # Show matrix visualization
-        mplayerCmd="$mplayerCmd && cmatrix -a -b -C $color -s"
+        mplayerCmd="$mplayerCmd | cmatrix -a -b -C $color -s"
     fi
 
-    $mplayerCmd
+    eval "$mplayerCmd"
 fi
 
 # Ensure we get back into a sane environment
