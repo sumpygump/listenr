@@ -14,6 +14,7 @@
                                 
 : ${DIALOG=dialog}
 : ${MPLAYER=mplayer}
+: ${CMATRIX=cmatrix}
 
 lversion="listenr-1.2.3"
 
@@ -31,8 +32,9 @@ op() {
 DEBUG=false
 MATRIX=true
 HASDIALOG=false
+STREAMWATCH=true
 
-SCRIPT=$(readlink -f $0)
+SCRIPT=$(readlink $0)
 SCRIPTPATH=`dirname $SCRIPT`
 CONFIGPATH="$SCRIPTPATH/stations.conf"
 STREAMWATCH_BIN="$SCRIPTPATH/streamwatch"
@@ -122,6 +124,22 @@ if [ $? -eq 1 ]; then
     exit 3
 fi
 
+# Detect if cmatrix is available
+which $CMATRIX > /dev/null
+if [ $? -eq 1 ]; then
+    # Turn off if not
+    MATRIX=false
+fi
+
+# For Macos, determine whether should use streamwatch
+which 'osascript' > /dev/null
+if [ $? -eq 0 ]; then
+    # Turn off streamwatch if osascript is found
+    STREAMWATCH=false
+    # Turn off the matrix too on macos
+    MATRIX=false
+fi
+
 # Process arg
 if [ -z $1 ]; then
     if [ $HASDIALOG == true ]; then
@@ -170,20 +188,24 @@ fi
 
 # Create command to execute
 userAgent=`$MPLAYER | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}'`
-mplayerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -prefer-ipv4 $url"
+mplayerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -noar -prefer-ipv4 $url"
 
 # Run appropriate command based on options
 if [ $DEBUG == true ] ; then
-    # Debug mode bypasses the streamwatch pipe
+    # Debug mode bypasses all other options
     $mplayerCmd
 else 
+    if [ $STREAMWATCH == true ] ; then
+        # Pipe to streamwatch
+        mplayerCmd="$mplayerCmd 2>&1 | $STREAMWATCH_BIN"
+    fi
+
     if [ $MATRIX == true ] ; then
         # Show matrix visualization
-        $mplayerCmd 2>&1 | $STREAMWATCH_BIN | cmatrix -a -b -C $color -s
-    else
-        # Don't show matrix visualization
-        $mplayerCmd 2>&1 | $STREAMWATCH_BIN
+        mplayerCmd="$mplayerCmd && cmatrix -a -b -C $color -s"
     fi
+
+    $mplayerCmd
 fi
 
 # Ensure we get back into a sane environment
