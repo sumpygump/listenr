@@ -1,17 +1,17 @@
 #!/bin/bash
 #------------------------------------------#
-#    _     _     _                  
-#   | |   (_)___| |_ ___ _ __  _ __ 
+#    _     _     _
+#   | |   (_)___| |_ ___ _ __  _ __
 #   | |   | / __| __/ _ \ '_ \| '__|
-#   | |___| \__ \ ||  __/ | | | |   
-#   |_____|_|___/\__\___|_| |_|_|   
+#   | |___| \__ \ ||  __/ | | | |
+#   |_____|_|___/\__\___|_| |_|_|
 #
 # Internet Radio from the command line
 # By Jansen Price <jansen.price@gmail.com>
 #------------------------------------------#
 # Run listenr --help for usage
 #------------------------------------------#
-                                
+
 : ${DIALOG=dialog}
 : ${MPLAYER=mplayer}
 : ${CMATRIX=cmatrix}
@@ -20,7 +20,7 @@ lversion="listenr-1.2.3"
 
 red() {
     if [ -t 0 ]; then
-        printf "\E[31m" 
+        printf "\E[31m"
     fi
 }
 op() {
@@ -78,19 +78,19 @@ displayStations() {
 # Handle --help arg
 if [ -n "$1" -a "$1" == "--help" ]; then
     displayUsage
-    exit 1
+    exit 0
 fi
 
 # Handle --version arg
 if [ -n "$1" -a "$1" == "--version" ]; then
     echo $lversion
-    exit 1
+    exit 0
 fi
 
 # Handle --list arg
 if [ -n "$1" -a "$1" == "--list" ]; then
     displayStations
-    exit 1
+    exit 0
 fi
 
 # Process options
@@ -194,7 +194,7 @@ mplayerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -
 if [ $DEBUG == true ] ; then
     # Debug mode bypasses all other options
     $mplayerCmd
-else 
+else
     if [ $STREAMWATCH == true ] ; then
         # Pipe to streamwatch
         mplayerCmd="$mplayerCmd 2>&1 | $STREAMWATCH_BIN"
