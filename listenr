@@ -16,7 +16,7 @@
 : ${MPLAYER=mplayer}
 : ${CMATRIX=cmatrix}
 
-lversion="listenr-1.2.3"
+lversion="listenr-1.2.4"
 
 red() {
     if [ -t 0 ]; then
