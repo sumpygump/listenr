@@ -16,7 +16,7 @@
 : ${MPLAYER=mplayer}
 : ${CMATRIX=cmatrix}
 
-lversion="listenr-1.2.4"
+lversion="listenr-1.2.5"
 
 red() {
     if [ -t 0 ]; then
@@ -63,16 +63,16 @@ displayUsage() {
     echo "  to display desktop notifications of stream song changes."
     echo "Without a station argument a dialog will present list for selecting a station."
     echo
-    echo "Example: listenr -d ${STATIONOPTS[0]}"
+    echo "Example: listenr ${STATIONOPTS[0]}"
     echo
 }
 
 displayStations() {
     echo 'List of available stations:'
+    echo '---------------------------'
     for i in $(seq 0 2 $((${#STATIONOPTS[@]} - 2))); do
-        echo "${STATIONOPTS[i]} - ${STATIONOPTS[i+1]}"
+        echo "${STATIONOPTS[i]}: ${STATIONOPTS[i+1]}"
     done
-    echo
 }
 
 # Handle --help arg
@@ -111,7 +111,6 @@ shift $((OPTIND-1))
 # Detect if dialog is available
 which $DIALOG > /dev/null
 if [ $? -eq 1 ]; then
-    red; echo "Warning: $DIALOG not installed. Reading station from args"; op
     HASDIALOG=false
 else
     HASDIALOG=true
@@ -131,12 +130,10 @@ if [ $? -eq 1 ]; then
     MATRIX=false
 fi
 
-# For Macos, determine whether should use streamwatch
+# For Macos, determine whether turning off things by default
 which 'osascript' > /dev/null
 if [ $? -eq 0 ]; then
-    # Turn off streamwatch if osascript is found
-    STREAMWATCH=false
-    # Turn off the matrix too on macos
+    # Turn off the matrix on macos
     MATRIX=false
 fi
 
@@ -164,7 +161,9 @@ if [ -z $1 ]; then
         esac
     else
         red;echo 'No station argument.';op
-        displayUsage
+        echo 'Use listenr <station-name> to stream from specific station'
+        echo "Example: listenr ${STATIONOPTS[0]}"
+        echo
         displayStations
         exit 1
     fi
@@ -175,6 +174,7 @@ fi
 # Find the station selected in the station data arrays
 for i in $(seq 0 $((${#STATIONURLS[@]} - 1))); do
     if [ ${STATIONURLS[i]} == $station ]; then
+        desc=${STATIONOPTS[i+1]}
         url=${STATIONURLS[++i]}
         color=${STATIONCOLORS[i]}
     fi
@@ -186,9 +186,11 @@ if [ "$url" = "" ]; then
     exit 2
 fi
 
+echo "Playing station $station - $desc"
+
 # Create command to execute
 userAgent=`$MPLAYER | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}'`
-mplayerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -noar -prefer-ipv4 $url"
+mplayerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -noar -prefer-ipv4 \"$url\""
 
 # Run appropriate command based on options
 if [ $DEBUG == true ] ; then

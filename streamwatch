@@ -109,12 +109,21 @@ class Streamwatch
         }
     }
 
+    public function notify()
+    {
+        if (php_uname('s') == 'Darwin') {
+            return $this->notify_macos();
+        }
+
+        return $this->notify_linux();
+    }
+
     /**
      * Notify on updated title
      * 
      * @return void
      */
-    public function notify()
+    public function notify_linux()
     {
         $cmd = "export DISPLAY=:0 && notify-send";
 
@@ -123,6 +132,33 @@ class Streamwatch
         }
 
         $cmd .= " \"" . $this->name . "\" \"" . $this->title . "\"";
+        $this->log($cmd);
+
+        exec($cmd, $result, $status);
+
+        if (!empty($result)) {
+            $this->log('Output: ' . print_r($result, 1));
+        }
+
+        if ($status != 0) {
+            $this->log('Status' . $status);
+        }
+    }
+
+    public function notify_macos()
+    {
+        // For this to work, you must first install alerter from
+        // https://github.com/vjeantet/alerter/
+        $cmd = "alerter";
+
+        $cmd .= " -title Listenr -timeout 5";
+
+        $cmd .= " -message \"" . $this->name . " " . $this->title . "\"";
+
+        if ($this->_icon) {
+            $cmd .= " -appIcon \"" . $this->_icon . "\"";
+        }
+
         $this->log($cmd);
 
         exec($cmd, $result, $status);
