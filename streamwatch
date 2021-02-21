@@ -20,7 +20,7 @@ $streamwatch->execute();
 
 /**
  * Streamwatch class
- * 
+ *
  * @package Listenr
  * @author Jansen Price <jansen.price@nerdery.com>
  * @version $Id$
@@ -29,21 +29,28 @@ class Streamwatch
 {
     /**
      * The name of the stream
-     * 
+     *
      * @var string
      */
     public $name = 'listenr';
 
     /**
      * Current title
-     * 
+     *
      * @var string
      */
     public $title = '';
 
     /**
+     * Previous title
+     *
+     * @var string
+     */
+    public $previous_title = '';
+
+    /**
      * Icon
-     * 
+     *
      * @var string
      */
     //protected $_icon = '/home/jprice/Pictures/icons/method.png';
@@ -51,7 +58,7 @@ class Streamwatch
 
     /**
      * Construct
-     * 
+     *
      * @return void
      */
     public function __construct()
@@ -70,11 +77,13 @@ class Streamwatch
             $this->_icon = realpath(dirname(__FILE__))
                 . DIRECTORY_SEPARATOR . $this->_icon;
         }
+
+        date_default_timezone_set('America/Chicago');
     }
 
     /**
      * Execute
-     * 
+     *
      * @param mixed $handle
      * @return void
      */
@@ -91,7 +100,7 @@ class Streamwatch
 
     /**
      * Read a line
-     * 
+     *
      * @param resource $handle
      * @return void
      */
@@ -105,10 +114,19 @@ class Streamwatch
 
         if (preg_match("/StreamTitle='(.*)';/U", $string, $matches)) {
             $this->title = $matches[1];
-            $this->notify();
+            if ($this->title != $this->previous_title) {
+                // This prevents it showing the same notification twice
+                $this->notify();
+                $this->previous_title = $this->title;
+            }
         }
     }
 
+    /**
+     * Notify on updated title
+     *
+     * @return void
+     */
     public function notify()
     {
         if (php_uname('s') == 'Darwin') {
@@ -119,8 +137,8 @@ class Streamwatch
     }
 
     /**
-     * Notify on updated title
-     * 
+     * Make notification for linux
+     *
      * @return void
      */
     public function notify_linux()
@@ -145,8 +163,15 @@ class Streamwatch
         }
     }
 
+    /**
+     * Make notification for macos
+     *
+     * @return void
+     */
     public function notify_macos()
     {
+        printf("%s > %s ::: %s\n", date('H:i:s'), $this->name, $this->title);
+
         // For this to work, you must first install alerter from
         // https://github.com/vjeantet/alerter/
         $cmd = "alerter";
@@ -174,7 +199,7 @@ class Streamwatch
 
     /**
      * Log a message to file
-     * 
+     *
      * @param mixed $message Message
      * @return void
      */
