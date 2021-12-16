@@ -52,7 +52,6 @@ USEMPV=false
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=`dirname $SCRIPT`
 STREAMWATCH_BIN="$SCRIPTPATH/streamwatch"
-echo $SCRIPTPATH
 
 CONFIGPATH="$HOME/.config/listenr/stations.conf"
 
@@ -233,7 +232,6 @@ fi
 # Run appropriate command based on options
 if [ $DEBUG == true ] ; then
     # Debug mode bypasses all other options
-    echo $playerCmd
     $playerCmd
 else
     if [ $STREAMWATCH == true ] ; then
