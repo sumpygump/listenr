@@ -4,26 +4,27 @@
  * Streamwatch
  *
  * This file is a PHP script that is a companion to listenr.
- * It reads stdin and then uses Linux' notify command to alert track changes
- * that are provided along with the Internet Radio stream changes.
+ * It reads stdin and then uses Linux notify command or macos alerter to alert track
+ * changes that are provided along with the Internet Radio stream changes.
+ *
+ * Usage:
+ * $ streamwatch [name-of-stream]
  */
 
 // TODO:
-// [ ] Pass in args for default name (streamwatch --name=streamname)
 // [ ] Make a debug mode (-d)
 // [ ] Use dotfile for icon, can specify as an arg too
 // [ ] Change default icon to something generic
 // [ ] Update notify to save text to a file, then add streamwatch -r to redisplay the notification
 
-$streamwatch = new Streamwatch();
+$streamwatch = new Streamwatch($argv);
 $streamwatch->execute();
 
 /**
  * Streamwatch class
  *
  * @package Listenr
- * @author Jansen Price <jansen.price@nerdery.com>
- * @version $Id$
+ * @author Jansen Price <jansen.price@gmail.com>
  */
 class Streamwatch
 {
@@ -53,7 +54,6 @@ class Streamwatch
      *
      * @var string
      */
-    //protected $_icon = '/home/jprice/Pictures/icons/method.png';
     protected $_icon = 'icons/listenr.png';
 
     /**
@@ -61,12 +61,12 @@ class Streamwatch
      *
      * @return void
      */
-    public function __construct()
+    public function __construct($argv = [])
     {
         if (DIRECTORY_SEPARATOR != "\\") {
-            $this->_homePath = $_SERVER['HOME'] . '/.listenr/';
+            $this->_homePath = $_SERVER['HOME'] . '/.config/listenr/';
         } else {
-            $this->_homePath = $_SERVER['USERPROFILE'] . '\\.listenr\\';
+            $this->_homePath = $_SERVER['USERPROFILE'] . '\\.config/listenr\\';
         }
 
         if (!file_exists($this->_homePath)) {
@@ -79,6 +79,16 @@ class Streamwatch
         }
 
         date_default_timezone_set('America/Chicago');
+
+        // Shift off the name of program from args
+        $program = array_shift($argv);
+
+        if (count($argv) > 0) {
+            // The first argument is the name of the stream to use
+            $this->name = trim($argv[0]);
+            $this->title = "Starting stream";
+            $this->notify();
+        }
     }
 
     /**
@@ -106,7 +116,9 @@ class Streamwatch
      */
     public function readline($handle)
     {
+        $encountered_title = false;
         $string = trim(fgets($handle));
+        //$this->log("Line encountered: $string");
 
         if (preg_match('/^Name\s*: (.*)$/', $string, $matches)) {
             $this->name = $matches[1];
@@ -114,11 +126,18 @@ class Streamwatch
 
         if (preg_match("/StreamTitle='(.*)';/U", $string, $matches)) {
             $this->title = $matches[1];
-            if ($this->title != $this->previous_title) {
-                // This prevents it showing the same notification twice
-                $this->notify();
-                $this->previous_title = $this->title;
-            }
+            $encountered_title = true;
+        }
+
+        if (preg_match("/icy-title: (.*)/", $string, $matches)) {
+            $this->title = $matches[1];
+            $encountered_title = true;
+        }
+
+        if ($encountered_title && $this->title != $this->previous_title) {
+            // This prevents it showing the same notification twice
+            $this->notify();
+            $this->previous_title = $this->title;
         }
     }
 
@@ -154,12 +173,11 @@ class Streamwatch
 
         exec($cmd, $result, $status);
 
-        if (!empty($result)) {
-            $this->log('Output: ' . print_r($result, 1));
-        }
-
         if ($status != 0) {
             $this->log('Status' . $status);
+            if (!empty($result)) {
+                $this->log('Output: ' . print_r($result, 1));
+            }
         }
     }
 
@@ -178,7 +196,7 @@ class Streamwatch
 
         $cmd .= " -title Listenr -timeout 5";
 
-        $cmd .= " -message \"" . $this->name . " " . $this->title . "\"";
+        $cmd .= " -message \"" . $this->name . "\n" . $this->title . "\"";
 
         if ($this->_icon) {
             $cmd .= " -appIcon \"" . $this->_icon . "\"";
@@ -188,19 +206,18 @@ class Streamwatch
 
         exec($cmd, $result, $status);
 
-        if (!empty($result)) {
-            $this->log('Output: ' . print_r($result, 1));
-        }
-
         if ($status != 0) {
             $this->log('Status' . $status);
+            if (!empty($result)) {
+                $this->log('Output: ' . print_r($result, 1));
+            }
         }
     }
 
     /**
      * Log a message to file
      *
-     * @param mixed $message Message
+     * @param string $message Message
      * @return void
      */
     public function log($message)
