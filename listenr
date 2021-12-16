@@ -14,9 +14,10 @@
 
 : ${DIALOG=dialog}
 : ${MPLAYER=mplayer}
+: ${MPV=mpv}
 : ${CMATRIX=cmatrix}
 
-lversion="listenr-1.2.5"
+lversion="listenr-1.2.6"
 
 red() {
     if [ -t 0 ]; then
@@ -28,20 +29,38 @@ op() {
         printf "\E[39;49m"
     fi
 }
+realpath() (
+    # Portable way to get absolute path of file respecting symlinks
+    OURPWD=$PWD
+    cd "$(dirname "$1")"
+    LINK=$(readlink "$(basename "$1")")
+    while [ "$LINK" ]; do
+        cd "$(dirname "$LINK")"
+        LINK=$(readlink "$(basename "$1")")
+    done
+    REALPATH="$PWD/$(basename "$1")"
+    echo $REALPATH
+    cd "$OURPWD"
+)
 
 DEBUG=false
 MATRIX=true
 HASDIALOG=false
 STREAMWATCH=true
+USEMPV=false
 
-SCRIPT=$(readlink $0)
+SCRIPT=$(realpath "$0")
 SCRIPTPATH=`dirname $SCRIPT`
-CONFIGPATH="$SCRIPTPATH/stations.conf"
 STREAMWATCH_BIN="$SCRIPTPATH/streamwatch"
+echo $SCRIPTPATH
+
+CONFIGPATH="$HOME/.config/listenr/stations.conf"
 
 if [ ! -e $CONFIGPATH ]; then
     red;echo "Config file '$CONFIGPATH' not found.";op
-    exit 5
+    echo "Creating file '$CONFIGPATH' from example"
+    mkdir -v "$HOME/.config/listenr"
+    cp -v "$SCRIPTPATH/stations.conf.example" "$CONFIGPATH"
 fi
 
 OLDIFS="$IFS"
@@ -116,10 +135,24 @@ else
     HASDIALOG=true
 fi
 
-# Detect if mplayer is available
+# Detect if mpv or mplayer is available
+which $MPV > /dev/null
+if [ $? -eq 1 ]; then
+    FOUND_MPV=false
+else
+    FOUND_MPV=true
+    USEMPV=true
+fi
+
 which $MPLAYER > /dev/null
 if [ $? -eq 1 ]; then
-    red; echo "Error: $MPLAYER not installed. $MPLAYER is required to listen to streams"; op
+    FOUND_MPLAYER=false
+else
+    FOUND_MPLAYER=true
+fi
+
+if [ $FOUND_MPLAYER == false -a $FOUND_MPV == false ]; then
+    red; echo "Error: Cannot find player (tried $MPLAYER and $MPV). You could try brew install mpv"; op
     exit 3
 fi
 
@@ -187,28 +220,34 @@ if [ "$url" = "" ]; then
 fi
 
 echo "Playing station $station - $desc"
-echo "Use / and * to adjust volume"
 
 # Create command to execute
-userAgent=`$MPLAYER | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}'`
-mplayerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -noar -prefer-ipv4 \"$url\""
+if [ $USEMPV == true ]; then
+    playerCmd="$MPV $url"
+else
+    userAgent=`$MPLAYER | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}'`
+    playerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -noar -prefer-ipv4 \"$url\""
+    echo "Use / and * to adjust volume"
+fi
 
 # Run appropriate command based on options
 if [ $DEBUG == true ] ; then
     # Debug mode bypasses all other options
-    $mplayerCmd
+    echo $playerCmd
+    $playerCmd
 else
     if [ $STREAMWATCH == true ] ; then
         # Pipe to streamwatch
-        mplayerCmd="$mplayerCmd 2>&1 | $STREAMWATCH_BIN"
+        playerCmd="$playerCmd 2>&1 | $STREAMWATCH_BIN \"$desc\""
+        echo $playerCmd
     fi
 
     if [ $MATRIX == true ] ; then
         # Show matrix visualization
-        mplayerCmd="$mplayerCmd | cmatrix -a -b -C $color -s"
+        playerCmd="$playerCmd | cmatrix -a -b -C $color -s"
     fi
 
-    eval "$mplayerCmd"
+    eval "$playerCmd"
 fi
 
 # Ensure we get back into a sane environment
