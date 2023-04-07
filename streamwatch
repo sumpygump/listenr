@@ -12,7 +12,6 @@
  */
 
 // TODO:
-// [ ] Make a debug mode (-d)
 // [ ] Use dotfile for icon, can specify as an arg too
 // [ ] Change default icon to something generic
 // [ ] Update notify to save text to a file, then add streamwatch -r to redisplay the notification
@@ -57,6 +56,20 @@ class Streamwatch
     protected $_icon = 'icons/listenr.png';
 
     /**
+     * Debug mode enabled
+     *
+     * @var string
+     */
+    protected $debug_mode = false;
+
+    /**
+     * Notify stdout enabled
+     *
+     * @var string
+     */
+    protected $notify_stdout_mode = false;
+
+    /**
      * Construct
      *
      * @return void
@@ -83,11 +96,18 @@ class Streamwatch
         // Shift off the name of program from args
         $program = array_shift($argv);
 
-        if (count($argv) > 0) {
-            // The first argument is the name of the stream to use
-            $this->name = trim($argv[0]);
-            $this->title = "Starting stream";
-            $this->notify();
+        while (count($argv) > 0) {
+            $arg = array_shift($argv);
+            if ($arg == "-d" || $arg == "--debug") {
+                $this->debug_mode = true;
+            } elseif ($arg == "-o" || $arg == "--output-notify") {
+                $this->notify_stdout_mode = true;
+            } else {
+                // Argument is the name of the stream to use
+                $this->name = $arg;
+                $this->title = "Starting stream";
+                $this->notify();
+            }
         }
     }
 
@@ -118,7 +138,10 @@ class Streamwatch
     {
         $encountered_title = false;
         $string = trim(fgets($handle));
-        //$this->log("Line encountered: $string");
+        if ($this->debug_mode) {
+            $this->log("DEBUG Line encountered: $string");
+            print("[" . date("Y-m-d H:i:s") . "] STREAMWATCH DEBUG; Line encountered: $string\n");
+        }
 
         if (preg_match('/^Name\s*: (.*)$/', $string, $matches)) {
             $this->name = $matches[1];
@@ -148,6 +171,10 @@ class Streamwatch
      */
     public function notify()
     {
+        if ($this->notify_stdout_mode) {
+            print("[" . date('Y-m-d H:i:s') . "] " . $this->name . " | " . $this->title . "\n");
+        }
+
         if (php_uname('s') == 'Darwin') {
             return $this->notify_macos();
         }

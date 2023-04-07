@@ -236,8 +236,7 @@ if [ $DEBUG == true ] ; then
 else
     if [ $STREAMWATCH == true ] ; then
         # Pipe to streamwatch
-        playerCmd="$playerCmd 2>&1 | $STREAMWATCH_BIN \"$desc\""
-        echo $playerCmd
+        playerCmd="$playerCmd 2>&1 | $STREAMWATCH_BIN --output-notify \"$desc\""
     fi
 
     if [ $MATRIX == true ] ; then
