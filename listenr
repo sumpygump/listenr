@@ -221,18 +221,21 @@ fi
 echo "Playing station $station - $desc"
 
 # Create command to execute
+osAgent=$(uname -srm)
 if [ $USEMPV == true ]; then
-    playerCmd="$MPV $url"
+    userAgent=$($MPV --version | grep 'Copyright' | awk '{printf "%s-%s", $1, $2}')
+    playerCmd="$MPV --user-agent='$lversion; $userAgent; $osAgent' $url"
+    echo "Use / and * to adjust volume"
 else
-    userAgent=`$MPLAYER | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}'`
-    playerCmd="$MPLAYER -user-agent \"$lversion/$USER/$userAgent\" -quiet -nolirc -noar -prefer-ipv4 \"$url\""
+    userAgent=$($MPLAYER -v | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}')
+    playerCmd="$MPLAYER -user-agent \"$lversion; $userAgent; $osAgent\" -quiet -nolirc -noar -prefer-ipv4 \"$url\""
     echo "Use / and * to adjust volume"
 fi
 
 # Run appropriate command based on options
 if [ $DEBUG == true ] ; then
     # Debug mode bypasses all other options
-    $playerCmd
+    eval "$playerCmd"
 else
     if [ $STREAMWATCH == true ] ; then
         # Pipe to streamwatch
