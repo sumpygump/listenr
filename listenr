@@ -221,14 +221,15 @@ fi
 echo "Playing station $station - $desc"
 
 # Create command to execute
-osAgent=$(uname -srm)
+os_agent=$(uname -srm)
+ua_lversion=${lversion//-/\/} # replace dash with slash
 if [ $USEMPV == true ]; then
     userAgent=$($MPV --version | grep 'Copyright' | awk '{printf "%s-%s", $1, $2}')
-    playerCmd="$MPV --user-agent='$lversion; $userAgent; $osAgent' $url"
+    playerCmd="$MPV --user-agent='$ua_lversion ($userAgent; $os_agent)' $url"
     echo "Use / and * to adjust volume"
 else
     userAgent=$($MPLAYER -v | grep 'MPlayer' | awk '{printf "%s-%s", $1, $2}')
-    playerCmd="$MPLAYER -user-agent \"$lversion; $userAgent; $osAgent\" -quiet -nolirc -noar -prefer-ipv4 \"$url\""
+    playerCmd="$MPLAYER -user-agent \"$ua_lversion ($userAgent; $os_agent)\" -quiet -nolirc -noar -prefer-ipv4 \"$url\""
     echo "Use / and * to adjust volume"
 fi
 
