@@ -70,7 +70,7 @@ STATIONCOLORS=(`awk 'BEGIN {FS = "|"} {printf "%s|%s|", $1, $4}' $CONFIGPATH`)
 IFS=$OLDIFS
 
 displayUsage() {
-    echo "$lversion - Listen to streaming radio using mplayer"
+    echo "$lversion - Listen to streaming radio using mpv or mplayer"
     echo "Usage: listenr [-d] [-n] [--list] [station]"
     echo '  -d Debug mode (bypass the streamwatch pipe)'
     echo '  -n No matrix animation (cmatrix)'
@@ -240,12 +240,13 @@ if [ $DEBUG == true ] ; then
 else
     if [ $STREAMWATCH == true ] ; then
         # Pipe to streamwatch
-        playerCmd="$playerCmd 2>&1 | $STREAMWATCH_BIN --output-notify \"$desc\""
-    fi
-
-    if [ $MATRIX == true ] ; then
-        # Show matrix visualization
-        playerCmd="$playerCmd | cmatrix -a -b -C $color -s"
+        if [ $MATRIX == true ] ; then
+            # Show matrix visualization too
+            playerCmd="$playerCmd 2>&1 | $STREAMWATCH_BIN \"$desc\""
+            playerCmd="$playerCmd | cmatrix -a -b -C $color -s"
+        else
+            playerCmd="$playerCmd 2>&1 | $STREAMWATCH_BIN --output-notify \"$desc\""
+        fi
     fi
 
     eval "$playerCmd"
