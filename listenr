@@ -17,7 +17,7 @@
 : ${MPV=mpv}
 : ${CMATRIX=cmatrix}
 
-lversion="listenr-1.2.7"
+lversion="listenr-1.2.8"
 
 red() {
     if [ -t 0 ]; then
